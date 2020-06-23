@@ -2,12 +2,11 @@
 // Example code for article: https://lostmoa.com/blog/UsingSceneStorageForStateRestorationInSwiftUIApps/
 //
 
-
 import SwiftUI
 
 struct ContentView: View {
     
-    @SceneStorage("selectedTab") var selectedTab = 0
+    @SceneStorage("selectedTab") var selectedTab: Tab = .car
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -15,18 +14,26 @@ struct ContentView: View {
                 .tabItem {
                     Image(systemName: "car")
                     Text("Car Trips")
-                }.tag(0)
+                }.tag(Tab.car)
             TramTrips()
                 .tabItem {
                     Image(systemName: "tram.fill")
                     Text("Tram Trips")
-                }.tag(1)
+                }.tag(Tab.tram)
             AirplaneTrips()
                 .tabItem {
                     Image(systemName: "airplane")
                     Text("Airplane Trips")
-            }.tag(2)
+                }.tag(Tab.airplaine)
         }
+    }
+    
+
+    // has to be RawRepresentable to be saved into SceneStorage
+    enum Tab: String {
+        case car
+        case tram
+        case airplaine
     }
 }
 
@@ -62,17 +69,18 @@ struct TramTrips: View {
 
 struct AirplaneTrips: View {
     
-    @SceneStorage("selectedAirplaneSubview") var selectedAirplaneSubview = "Domestic"
+    @SceneStorage("selectedAirplaneSubview") var selectedAirplaneSubview: Subview = .domestic
     
-    let subviews = ["Domestic", "International"]
+    let subviews = Subview.allCases
     
     var body: some View {
         NavigationView {
             List {
-                if selectedAirplaneSubview == "Domestic" {
+                switch selectedAirplaneSubview {
+                case Subview.domestic:
                     Text("Auckland 14.04.2020")
                     Text("Wellington 10.05.2020")
-                } else {
+                case Subview.international:
                     Text("Sydney 17.04.2020")
                     Text("Singapore 12.05.2020")
                 }
@@ -81,7 +89,7 @@ struct AirplaneTrips: View {
                 trailing:
                         Picker("Airplane Trips", selection: $selectedAirplaneSubview) {
                             ForEach(self.subviews, id: \.self) { subview in
-                                Text(subview)
+                                Text(subview.rawValue.capitalized)
                             }
                         }
                         .labelsHidden()
@@ -92,5 +100,10 @@ struct AirplaneTrips: View {
             .navigationTitle("Airplane Trips")
         }
         .navigationViewStyle(StackNavigationViewStyle())
+    }
+    
+    enum Subview: String, CaseIterable {
+        case domestic
+        case international
     }
 }
