@@ -1,81 +1,99 @@
-// This is example code for persisting state with SceneStorage when switching between TabView and Sidebar made with iOS & iPadOS 14: 18A5301v
-
+// This is example code for persisting state with SceneStorage when switching between TabView and Sidebar made with iOS & iPadOS 14: 18A5301v
 // It crashes very often within the framework when switching size class.
-
 // There currently some issues with programmatic navigation:
 // it doesn't highlight the row if it was selected programmatically
 // it calls the selection binding twice, second time with nil, so we need to ignore the nil value. We can ignore nil value because this view is replaced with TabView in compact mode.
 
-import SwiftUI
+// Tabs now restore navigation without crashing but Domestic/International state currently isn't saved.
+// I believe the crash was related to NavigationLink being bound to selection.
+// It also needed the default detail view to show the selection.
+// Previously selected sidebar row is shown in grey.
+// The main idea here is the detail appearing is what drives the selection not the navigation link.
+// Detail could possibly be replaced by the same Tab view perhaps with a page style?
 
+import SwiftUI
 struct ContentView: View {
-    
+    @SceneStorage("selectedItem") var selectedItem: NavigationItem = .car
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    
     @ViewBuilder var body: some View {
         if horizontalSizeClass == .compact {
-            TabBarNavigation()
+            TabBarNavigation(selectedItem: $selectedItem)
         } else {
-            SidebarNavigation()
+            SidebarNavigation(selectedItem: $selectedItem)
+              //  .tabViewStyle(PageTabViewStyle())
         }
     }
 }
-
 enum NavigationItem: String {
     case car
     case tram
-    case airplaine
+    case airplane
 }
-
 struct SidebarNavigation: View {
     
-    @SceneStorage("selectedItem") var selectedItem: NavigationItem = .car
-    
-    var navigationBinding: Binding<NavigationItem?> {
-        Binding<NavigationItem?> {
-            return self.selectedItem
-        } set: { value in
-            if let value = value {
-                self.selectedItem = value
-            }
-            
-        }
-    }
-    
+//    var navigationBinding: Binding<NavigationItem?> {
+//        Binding<NavigationItem?> {
+//            return self.selectedItem
+//        } set: { value in
+//            if let value = value {
+//                self.selectedItem = value
+//            }
+//        }
+//    }
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Binding var selectedItem: NavigationItem
     var body: some View {
         NavigationView {
             List {
-                NavigationLink(destination: CarTrips(), tag: NavigationItem.car, selection: navigationBinding) {
+                NavigationLink(destination: Detail(item:.car, selectedItem: $selectedItem)) {
                     Label("Car Trips", systemImage: "car")
                 }
-                .tag(NavigationItem.car)
-                
-                NavigationLink(destination: TramTrips(), tag: NavigationItem.tram, selection: navigationBinding) {
+                .listRowBackground(selectedItem == .car ? Color(UIColor.lightGray) : Color.clear)
+                NavigationLink(destination: Detail(item:.tram, selectedItem: $selectedItem)) {
                     Label("Tram Trips", systemImage: "tram")
                 }
-                .tag(NavigationItem.tram)
-                
-                NavigationLink(destination: AirplaneTrips(), tag: NavigationItem.airplaine, selection: navigationBinding) {
+                .listRowBackground(selectedItem == .tram ? Color(UIColor.lightGray) : Color.clear)
+                NavigationLink(destination: Detail(item:.airplane, selectedItem: $selectedItem)) {
                     Label("Airplane Trips", systemImage: "airplane")
                 }
-                .tag(NavigationItem.airplaine)
-                
+                .listRowBackground(selectedItem == .airplane ? Color(UIColor.lightGray) : Color.clear)
             }
             .listStyle(SidebarListStyle())
-            
-            
-            Text("Select something.")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            
+            //Text("Select something.")
+              //  .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Detail(item:selectedItem, selectedItem: $selectedItem)
+                //.tabViewStyle(horizontalSizeClass == .compact ? PageTabViewStyle() : DefaultTabViewStyle())
         }
-        
     }
-    
+}
+
+struct Detail : View {
+    let item: NavigationItem
+    @Binding var selectedItem: NavigationItem
+    @ViewBuilder
+    var body: some View {
+        switch item {
+        case .car:
+            CarTrips()
+                .onAppear(){
+                    selectedItem = .car
+                }
+        case .airplane:
+            AirplaneTrips()
+                .onAppear(){
+                    selectedItem = .airplane
+                }
+        case .tram:
+            TramTrips()
+                .onAppear(){
+                    selectedItem = .tram
+                }
+        }
+    }
 }
 
 struct TabBarNavigation: View {
-    @SceneStorage("selectedItem") var selectedItem: NavigationItem = .car
-    
+    @Binding var selectedItem: NavigationItem
     var body: some View {
         TabView(selection: $selectedItem) {
             NavigationView {
@@ -85,7 +103,6 @@ struct TabBarNavigation: View {
                 Label("Car Trips", systemImage: "car")
             }
             .tag(NavigationItem.car)
-            
             NavigationView {
                 TramTrips()
             }
@@ -93,20 +110,17 @@ struct TabBarNavigation: View {
                 Label("Tram Trips", systemImage: "tram.fill")
             }
             .tag(NavigationItem.tram)
-            
-            
             NavigationView {
                 AirplaneTrips()
             }
             .tabItem {
                 Label("Airplane Trips", systemImage: "airplane")
             }
-            .tag(NavigationItem.airplaine)
+            .tag(NavigationItem.airplane)
         }
         
     }
 }
-
 struct CarTrips: View {
     
     var body: some View {
@@ -116,10 +130,9 @@ struct CarTrips: View {
             Text("Christchurch 7.05.2020")
         }
         .navigationTitle("Car Trips")
-    }
-    
-}
 
+    }
+}
 struct TramTrips: View {
     
     var body: some View {
@@ -128,16 +141,14 @@ struct TramTrips: View {
             Text("Christchurch Cathedral  23.04.2020")
         }
         .navigationTitle("Tram Trips")
+
     }
 }
-
 struct AirplaneTrips: View {
     
     @SceneStorage("selectedAirplaneSubview")
     var selectedAirplaneSubview: Subview = .domestic
-    
     let subviews = Subview.allCases
-    
     var body: some View {
         List {
             switch selectedAirplaneSubview {
@@ -149,9 +160,7 @@ struct AirplaneTrips: View {
                 Text("Singapore 12.05.2020")
             }
         }
-        
         .navigationTitle("Airplane Trips")
-        
         .navigationBarItems(
             trailing:
                 Picker("Airplane Trips", selection: $selectedAirplaneSubview) {
@@ -162,10 +171,8 @@ struct AirplaneTrips: View {
                 .labelsHidden()
                 .pickerStyle(SegmentedPickerStyle())
                 .frame(width: 250)
-            
         )
     }
-    
     enum Subview: String, CaseIterable {
         case domestic
         case international
